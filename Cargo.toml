@@ -1,0 +1,11 @@
+[package]
+name = "ineedaname"
+version = "0.1.0"
+authors = ["Hagsteel <me@hagsteel.com>"]
+edition = "2018"
+description = "a very basic tui game"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+crossterm = "0.18.0"
