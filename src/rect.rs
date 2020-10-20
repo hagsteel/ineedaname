@@ -1,29 +1,35 @@
 #[derive(Debug, Clone, Copy)]
 pub struct Rect {
-    pub top_left: Pos,
-    pub bottom_right: Pos,
+    pub origin: Pos,
+    pub size: Size,
 }
 
 impl Rect {
-    pub fn new(top_left: Pos, bottom_right: Pos) -> Self {
-        Self {
-            top_left,
-            bottom_right,
-        }
+    pub fn new(origin: Pos, size: Size) -> Self {
+        Self { origin, size }
     }
 
     pub fn contains(&self, pos: Pos) -> bool {
-        if pos.x < self.top_left.x {
-            false
-        } else if pos.x > self.bottom_right.x {
-            false
-        } else if pos.y < self.top_left.y {
-            false
-        } else if pos.y > self.bottom_right.y {
-            false
-        } else {
-            true
+        self.origin.x <= pos.x
+            && pos.x < self.origin.x + self.size.width
+            && self.origin.y <= pos.y
+            && pos.y < self.origin.y + self.size.height
+    }
+
+    pub fn contains_with_offset(&self, pos: Pos, offset: Pos) -> bool {
+        if pos.x as i32 - (offset.x as i32) < 0 {
+            return false;
         }
+
+        if pos.y as i32 - (offset.y as i32) < 0 {
+            return false;
+        }
+
+        let pos = pos.sub(offset);
+        self.origin.x <= pos.x
+            && pos.x < self.origin.x + self.size.width
+            && self.origin.y <= pos.y
+            && pos.y < self.origin.y + self.size.height
     }
 }
 
@@ -39,9 +45,22 @@ impl Pos {
     }
 
     pub fn new(x: u16, y: u16) -> Self {
-        Self {
-            x,
-            y
-        }
+        Self { x, y }
+    }
+
+    pub fn sub(&self, add: Pos) -> Pos {
+        Pos::new(self.x - add.x, self.y - add.y)
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct Size {
+    pub width: u16,
+    pub height: u16,
+}
+
+impl Size {
+    pub fn new(width: u16, height: u16) -> Self {
+        Self { width, height }
     }
 }

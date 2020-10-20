@@ -14,10 +14,11 @@ mod draw;
 mod events;
 mod map;
 mod rect;
+mod viewport;
 
 use draw::{Widget, Context};
 use events::{Event, Key};
-use rect::{Pos, Rect};
+pub use rect::{Pos, Size, Rect};
 
 fn do_the_raw_mode_thing() -> Result<Stdout> {
     enable_raw_mode()?;
@@ -42,14 +43,14 @@ pub fn run() -> Result<()> {
 
     let map = map::Map::from_path("maps/start.map").unwrap();
     let mut context = Context::with_capacity(80 * 20);
-    let mut viewport = map::Viewport::new(15, 7);
-    if let Some(s) = map.spawn_point() {
-        viewport.set_pos(s);
-    }
-    map.draw(&mut context, &mut stdout, 0, 3, &viewport)?;
-    let mut viewport_border = draw::Border::new(viewport.min_pos(), viewport.width, viewport.height, "********");
-    viewport_border.expand(2);
-    viewport_border.draw(&mut stdout)?;
+    let mut viewport = viewport::Viewport::new(5, 5);
+    viewport.move_by(Pos::new(1, 1));
+
+    let offset = Pos::new(0, 3);
+    map.draw(&mut context, &mut stdout, &viewport, offset)?;
+
+    // let mut viewport_border = draw::Border::new(offset, viewport.width, viewport.height, "********");
+    // viewport_border.draw(&mut stdout)?;
 
     stdout.flush()?;
 

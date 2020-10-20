@@ -6,43 +6,13 @@ use crossterm::Result;
 
 use crate::draw::Context;
 use crate::draw::Widget;
-use crate::{Rect, Pos};
+use crate::Pos;
+use crate::viewport::Viewport;
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Flag {
     Spawn,
 }
-
-pub struct Viewport {
-    pub pos: Pos,
-    pub width: u16,
-    pub height: u16,
-}
-
-impl Viewport {
-    fn rect(&self) -> Rect {
-        Rect::new(self.pos, Pos::new(self.pos.x + self.width, self.pos.y + self.width))
-    }
-
-    pub fn new(width: u16, height: u16) -> Self {
-        Self {
-            pos: Pos::zero(),
-            width,
-            height,
-        }
-    }
-
-    pub fn set_pos(&mut self, pos: Pos) {
-        self.pos = pos;
-    }
-
-    pub fn min_pos(&self) -> Pos {
-        let min_x = self.pos.x - self.width / 2;
-        let min_y = self.pos.y - self.height / 2;
-        Pos::new(min_x, min_y)
-    }
-}
-
 
 pub struct Tile {
     pos: Pos,
@@ -98,25 +68,27 @@ impl Map {
         &self,
         context: &mut Context,
         stdout: &mut Stdout,
-        offset_x: u16,
-        offset_y: u16,
         viewport: &Viewport,
+        offset: Pos,
     ) -> Result<()> {
-
-        // Centre of viewport has X, Y
-        // only draw tiles that are less than viewport.width / 2 + X and greater
-        //                               than viewport.width / 2 - X
-
         let rect = viewport.rect();
 
+        let mut count = 0;
+        let max = viewport.size.width * viewport.size.height;
+
         for tile in &self.tiles {
-            if rect.contains(tile.pos) {
+            if rect.contains_with_offset(tile.pos, viewport.render_offset) {
                 context.put(
                     tile.c,
-                    Pos::new(tile.pos.x + offset_x, tile.pos.y + offset_y),
+                    Pos::new(tile.pos.x + offset.x, tile.pos.y + offset.y),
                     None,
                     None,
                 );
+
+                count += 1;
+                if count > max {
+                    return Ok(());
+                }
             }
         }
 

@@ -56,13 +56,6 @@ impl Border {
             left: chars.next().unwrap(),
         }
     }
-    
-    pub fn expand(&mut self, size: u16) {
-        self.pos.x -=size;
-        self.pos.y -=size;
-        self.width +=size * 2;
-        self.height +=size * 2;
-    }
 }
 
 impl Widget for Border {
