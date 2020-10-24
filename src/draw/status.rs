@@ -13,9 +13,9 @@ pub struct StatusWidget {
 }
 
 impl Widget for StatusWidget {
-    fn draw(&self, stdout: &mut Stdout) -> Result<()> {
+    fn draw(&mut self, stdout: &mut Stdout) -> Result<()> {
         let (w, _) = size()?;
-        let border = Border::new(Pos::zero(), w, 3, ",-,|'-`|");
+        let mut border = Border::new(Pos::zero(), w, 3, ",-,|'-`|");
         border.draw(stdout)?;
         stdout.queue(MoveTo(1, 1))?;
         self.hitpoints.draw(stdout)?;
@@ -30,7 +30,7 @@ pub struct Hitpoints {
 }
 
 impl Widget for Hitpoints {
-    fn draw(&self, stdout: &mut Stdout) -> Result<()> {
+    fn draw(&mut self, stdout: &mut Stdout) -> Result<()> {
         let p = (self.current as f32 / self.max as f32) * 100.0;
 
         let color = if p < 10.0 {
@@ -43,7 +43,7 @@ impl Widget for Hitpoints {
         };
 
         let text = format!("{}/{}", self.current, self.max);
-        let label = Label::new(&text, color);
+        let mut label = Label::new(&text, color);
         label.draw(stdout)?;
 
         Ok(())

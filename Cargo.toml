@@ -9,3 +9,4 @@ description = "a very basic tui game"
 
 [dependencies]
 crossterm = "0.18.0"
+tilemap = { path = "../tilemap" }

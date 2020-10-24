@@ -7,8 +7,9 @@ use crossterm::cursor::MoveTo;
 use super::Widget;
 use crate::Pos;
 
+#[derive(Debug)]
 pub struct Context {
-    chars: Vec<(char, Pos, Option<Color>, Option<Color>)>,
+    pub chars: Vec<(char, Pos, Option<Color>, Option<Color>)>,
 }
 
 impl Context {
@@ -45,16 +46,16 @@ impl Context {
 }
 
 impl Widget for Context {
-    fn draw(&self, stdout: &mut Stdout) -> Result<()> {
-        self.chars.iter().for_each(|(c, pos, fg, bg)| {
+    fn draw(&mut self, stdout: &mut Stdout) -> Result<()> {
+        self.chars.drain(..).for_each(|(c, pos, fg, bg)| {
             stdout.queue(MoveTo(pos.x, pos.y)).expect("Failed to position cursor");
 
             if let Some(col) = fg {
-                stdout.queue(SetForegroundColor(*col)).expect("Failed to set foreground colour");
+                stdout.queue(SetForegroundColor(col)).expect("Failed to set foreground colour");
             }
 
             if let Some(col) = bg {
-                stdout.queue(SetBackgroundColor(*col)).expect("Failed to set foreground colour");
+                stdout.queue(SetBackgroundColor(col)).expect("Failed to set foreground colour");
             }
 
             stdout.queue(Print(c)).expect("Failed to print character");

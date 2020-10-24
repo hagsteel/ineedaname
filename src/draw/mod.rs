@@ -1,6 +1,6 @@
 use std::io::Stdout;
 
-use crossterm::style::{Color, Print, SetForegroundColor, ResetColor};
+use crossterm::style::{Color, Print, SetBackgroundColor, SetForegroundColor, ResetColor};
 use crossterm::{Result, QueueableCommand};
 use crossterm::cursor::MoveTo;
 
@@ -12,7 +12,7 @@ use status::{StatusWidget, Hitpoints};
 use crate::Pos;
 
 pub trait Widget {
-    fn draw(&self, stdout: &mut Stdout) -> Result<()>;
+    fn draw(&mut self, stdout: &mut Stdout) -> Result<()>;
 }
 
 // -----------------------------------------------------------------------------
@@ -59,7 +59,7 @@ impl Border {
 }
 
 impl Widget for Border {
-    fn draw(&self, stdout: &mut Stdout) -> Result<()> {
+    fn draw(&mut self, stdout: &mut Stdout) -> Result<()> {
         // Top left
         stdout.queue(MoveTo(self.pos.x, self.pos.y))?;
         stdout.queue(Print(self.top_left))?;
@@ -112,7 +112,7 @@ impl<'a> Label<'a> {
 }
 
 impl<'a> Widget for Label<'a> {
-    fn draw(&self, stdout: &mut Stdout) -> Result<()> {
+    fn draw(&mut self, stdout: &mut Stdout) -> Result<()> {
         stdout.queue(SetForegroundColor(self.color))?;
         stdout.queue(Print(self.text))?;
         stdout.queue(ResetColor)?;
@@ -120,11 +120,54 @@ impl<'a> Widget for Label<'a> {
     }
 }
 
-pub fn draw_something(stdout: &mut Stdout) -> Result<()> {
-    let status = StatusWidget {
+pub fn draw_status(stdout: &mut Stdout) -> Result<()> {
+    let mut status = StatusWidget {
         hitpoints: Hitpoints { current: 52, max: 200 }
     };
     status.draw(stdout)?;
     
     Ok(())
+}
+
+// -----------------------------------------------------------------------------
+//     - Character -
+// -----------------------------------------------------------------------------
+pub struct Character {
+    c: char,
+    pos: Pos,
+    pub fg: Option<Color>,
+    pub bg: Option<Color>,
+}
+
+impl Character {
+    pub fn new(c: char, pos: Pos) -> Self {
+        Self {
+            c,
+            pos,
+            fg: None,
+            bg: None,
+        }
+    }
+
+    pub fn set_pos(&mut self, pos: Pos) {
+        self.pos = pos;
+    }
+}
+
+impl Widget for Character {
+    fn draw(&mut self, stdout: &mut Stdout) -> Result<()> {
+        stdout.queue(self.pos.into_move_to());
+
+        if let Some(col) = self.fg {
+            stdout.queue(SetForegroundColor(col));
+        }
+
+        if let Some(col) = self.bg {
+            stdout.queue(SetBackgroundColor(col));
+        }
+
+        stdout.queue(Print(self.c));
+        stdout.queue(ResetColor);
+        Ok(())
+    }
 }

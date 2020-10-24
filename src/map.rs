@@ -1,98 +1,146 @@
 use std::fs::read_to_string;
 use std::io::{self, Stdout};
-use std::path::PathBuf;
+use std::path::Path;
 
 use crossterm::Result;
+use tilemap::TileMap;
 
-use crate::draw::Context;
-use crate::draw::Widget;
-use crate::Pos;
-use crate::viewport::Viewport;
+use crate::draw::{Context, Widget};
+use crate::{Pos, Rect};
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Flag {
     Spawn,
 }
 
+#[derive(Debug, Clone)]
 pub struct Tile {
-    pos: Pos,
     c: char,
     flags: Vec<Flag>,
 }
 
+impl From<char> for Tile {
+    fn from(c: char) -> Tile {
+        let flags = if c == 'S' { vec![Flag::Spawn] } else { vec![] };
+        Tile { c, flags }
+    }
+}
+
+impl Default for Tile {
+    fn default() -> Self {
+        Self {
+            c: ' ',
+            flags: Vec::new(),
+        }
+    }
+}
+
 pub struct Map {
-    tiles: Vec<Tile>,
+    tilemap: TileMap<Tile>,
+    pub context: Context,
+    pub visible_area: Rect,
+    pub render_offset: Pos,
 }
 
 impl Map {
-    pub fn from_path(path: impl Into<PathBuf>) -> io::Result<Self> {
-        let raw_data = read_to_string(path.into())?;
+    pub fn from_path(
+        context: Context,
+        visible_area: Rect,
+        render_offset: Pos,
+        path: impl AsRef<Path>,
+    ) -> io::Result<Self> {
+        let raw_data = read_to_string(path)?;
 
-        let tiles = raw_data
-            .lines()
-            .enumerate()
-            .map(|(y, line)| {
-                line.chars().enumerate().map(|(x, c)| {
-                    let mut flags = Vec::new();
+        let mut width = 0;
+        let mut height = 0;
 
-                    if c == 'S' {
-                        flags.push(Flag::Spawn);
-                    }
+        let mut chars = Vec::new();
 
-                    Tile {
-                        pos: Pos::new(x as u16, y as u16),
-                        c,
-                        flags,
-                    }
-                }).collect::<Vec<_>>()
-            })
-            .collect::<Vec<_>>()
-            .into_iter()
-            .flatten()
-            .collect();
-
-        Ok(Self { tiles })
-    }
-
-    pub fn spawn_point(&self) -> Option<Pos> {
-        self.tiles.iter().find_map(|tile| {
-            if tile.flags.iter().any(|&f| f == Flag::Spawn) {
-                Some(tile.pos)
-            } else {
-                None
-            }
-        })
-    }
-
-    pub fn draw(
-        &self,
-        context: &mut Context,
-        stdout: &mut Stdout,
-        viewport: &Viewport,
-        offset: Pos,
-    ) -> Result<()> {
-        let rect = viewport.rect();
-
-        let mut count = 0;
-        let max = viewport.size.width * viewport.size.height;
-
-        for tile in &self.tiles {
-            if rect.contains_with_offset(tile.pos, viewport.render_offset) {
-                context.put(
-                    tile.c,
-                    Pos::new(tile.pos.x + offset.x, tile.pos.y + offset.y),
-                    None,
-                    None,
-                );
-
-                count += 1;
-                if count > max {
-                    return Ok(());
+        for (y, line) in raw_data.lines().enumerate() {
+            for (x, c) in line.chars().enumerate() {
+                if x > width {
+                    width = x;
                 }
+                if y > height {
+                    height = y;
+                }
+                chars.push((c, (x, y)));
             }
         }
 
-        context.draw(stdout)?;
+        let mut tilemap = TileMap::new(width, height);
+
+        for (c, pos) in chars {
+            tilemap.insert(
+                c.into(),
+                pos,
+            );
+        }
+
+        Ok(Self {
+            tilemap,
+            context,
+            visible_area,
+            render_offset,
+        })
+    }
+
+    pub fn spawn_point(&self) -> Option<Pos> {
+        self.tilemap
+            .tiles
+            .iter()
+            .enumerate()
+            .find_map(|(index, tile)| match tile {
+                Some(t) if t.flags.iter().any(|&f| f == Flag::Spawn) => {
+                    Some(self.tilemap.from_index(index).into())
+                }
+                _ => None,
+            })
+    }
+
+    pub fn translate(&self, pos: Pos) -> Pos {
+        pos.sub(self.visible_area.origin).add(self.render_offset)
+    }
+
+    pub fn centre(&self, pos: Pos) -> Pos {
+        let centre = Pos::new(
+            self.visible_area.size.width / 2,
+            self.visible_area.size.height / 2,
+        );
+        pos.sub(centre)
+    }
+}
+
+impl Widget for Map {
+    fn draw(&mut self, stdout: &mut Stdout) -> Result<()> {
+        let mut count = 0;
+        let max = self.visible_area.size.width * self.visible_area.size.height;
+
+        let start = self.visible_area.origin.to_tuple();
+        let end = {
+            let (mut x, mut y) = self.visible_area.size.to_tuple();
+            x += start.0;
+            y += start.1;
+            (x as usize, y as usize)
+        };
+
+        let start = (start.0 as usize, start.1 as usize);
+
+        self.tilemap.coords_in_area(start, end).for_each(|(x, y)| {
+            let tile = self.tilemap.by_coords((x, y));
+            if let Some(tile) = tile {
+                self.context.put(
+                    tile.c,
+                    Pos::new(
+                        x as u16 + self.render_offset.x,
+                        y as u16 + self.render_offset.y,
+                    ),
+                    None,
+                    None,
+                );
+            }
+        });
+
         Ok(())
     }
 }

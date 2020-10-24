@@ -1,3 +1,5 @@
+use crossterm::cursor::MoveTo;
+
 #[derive(Debug, Clone, Copy)]
 pub struct Rect {
     pub origin: Pos,
@@ -15,24 +17,11 @@ impl Rect {
             && self.origin.y <= pos.y
             && pos.y < self.origin.y + self.size.height
     }
-
-    pub fn contains_with_offset(&self, pos: Pos, offset: Pos) -> bool {
-        if pos.x as i32 - (offset.x as i32) < 0 {
-            return false;
-        }
-
-        if pos.y as i32 - (offset.y as i32) < 0 {
-            return false;
-        }
-
-        let pos = pos.sub(offset);
-        self.origin.x <= pos.x
-            && pos.x < self.origin.x + self.size.width
-            && self.origin.y <= pos.y
-            && pos.y < self.origin.y + self.size.height
-    }
 }
 
+// -----------------------------------------------------------------------------
+//     - Position -
+// -----------------------------------------------------------------------------
 #[derive(Debug, Clone, Copy)]
 pub struct Pos {
     pub x: u16,
@@ -48,11 +37,32 @@ impl Pos {
         Self { x, y }
     }
 
+    pub fn add(&self, add: Pos) -> Pos {
+        Pos::new(self.x + add.x, self.y + add.y)
+    }
+
     pub fn sub(&self, add: Pos) -> Pos {
         Pos::new(self.x - add.x, self.y - add.y)
     }
+
+    pub fn into_move_to(self: Self) -> MoveTo {
+        MoveTo(self.x, self.y)
+    }
+
+    pub fn to_tuple(self) -> (u16, u16) {
+        (self.x, self.y)
+    }
 }
 
+impl From<(usize, usize)> for Pos {
+    fn from(p: (usize, usize)) -> Pos {
+        Pos::new(p.0 as u16, p.1 as u16)
+    }
+}
+
+// -----------------------------------------------------------------------------
+//     - Size -
+// -----------------------------------------------------------------------------
 #[derive(Debug, Clone, Copy)]
 pub struct Size {
     pub width: u16,
@@ -62,5 +72,9 @@ pub struct Size {
 impl Size {
     pub fn new(width: u16, height: u16) -> Self {
         Self { width, height }
+    }
+
+    pub fn to_tuple(self) -> (u16, u16) {
+        (self.width, self.height)
     }
 }
